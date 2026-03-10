@@ -1,0 +1,33 @@
+{
+  "name": "getfrommap",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Serve public/ as static assets
+  "assets": {
+    "directory": "public"
+  },
+
+  // Browser Rendering binding
+  "browser": {
+    "binding": "MYBROWSER"
+  },
+
+  // Durable Objects
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SCRAPE_JOB",
+        "class_name": "ScrapeJob"
+      }
+    ]
+  },
+
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["ScrapeJob"]
+    }
+  ]
+}

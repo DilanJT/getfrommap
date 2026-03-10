@@ -1,9 +1,9 @@
-.PHONY: install serve scrape-favorite scrape-askim scrape clean
+.PHONY: install serve scrape-favorite scrape-askim scrape dev\:worker deploy clean
 
 install:
 	npm install
 
-dev:
+serve:
 	node server.mjs
 
 # Scrape photos for Favorite Lake Restaurant (original)
@@ -19,6 +19,12 @@ scrape-askim:
 scrape:
 	@if [ -z "$(URL)" ]; then echo "Usage: make scrape URL=\"<google-maps-url>\" OUT=\"./output-dir\""; exit 1; fi
 	node scrape-restaurant.mjs "$(URL)" $(or $(OUT),./public/images/output)
+
+dev:
+	npx wrangler dev
+
+deploy:
+	npx wrangler deploy
 
 clean:
 	rm -rf public/images/*/_debug_*.png

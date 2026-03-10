@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maps Photo Scraper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: #fff;
+      color: #111;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 60px 24px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+    }
+
+    .subtitle {
+      color: #666;
+      margin-top: 6px;
+      font-size: 15px;
+    }
+
+    /* Input */
+    .input-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 40px;
+    }
+
+    #url-input {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 15px;
+      font-family: 'Inter', sans-serif;
+      border: 2px solid #111;
+      border-radius: 6px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    #url-input:focus { border-color: #555; }
+
+    #url-input::placeholder { color: #aaa; }
+
+    .btn {
+      padding: 12px 28px;
+      font-size: 15px;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      background: #111;
+      color: #fff;
+      border: 2px solid #111;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn:hover { background: #333; }
+    .btn:disabled { background: #999; border-color: #999; cursor: not-allowed; }
+
+    /* Progress */
+    #progress-section {
+      margin-top: 32px;
+    }
+
+    .progress-bar-track {
+      width: 100%;
+      height: 4px;
+      background: #e5e5e5;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: #111;
+      transition: width 0.3s ease;
+    }
+
+    #progress-text {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    /* Results */
+    #results-section {
+      margin-top: 40px;
+    }
+
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .results-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    #photo-count {
+      font-size: 14px;
+      font-weight: 500;
+      color: #666;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-outline {
+      padding: 8px 20px;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      background: #fff;
+      color: #111;
+      border: 2px solid #111;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-outline:hover {
+      background: #111;
+      color: #fff;
+    }
+
+    .btn-outline:disabled {
+      border-color: #999;
+      color: #999;
+      cursor: not-allowed;
+      background: #fff;
+    }
+
+    #select-all-label {
+      font-size: 14px;
+      color: #666;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+    }
+
+    #select-all-label input {
+      accent-color: #111;
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+
+    /* Image grid */
+    .image-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 12px;
+    }
+
+    .image-card {
+      position: relative;
+      aspect-ratio: 4 / 3;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid #e5e5e5;
+      background: #fafafa;
+      cursor: pointer;
+    }
+
+    .image-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .image-card .select-checkbox {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: 20px;
+      height: 20px;
+      accent-color: #111;
+      cursor: pointer;
+      z-index: 2;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .image-card:hover .select-checkbox,
+    .image-card .select-checkbox:checked {
+      opacity: 1;
+    }
+
+    .image-card.selected {
+      border-color: #111;
+      border-width: 2px;
+    }
+
+    .image-card .download-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .image-card:hover .download-overlay {
+      opacity: 1;
+    }
+
+    .download-overlay button {
+      padding: 8px 18px;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      background: #fff;
+      color: #111;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .download-overlay button:hover {
+      background: #e5e5e5;
+    }
+
+    .hidden { display: none !important; }
+
+    /* Error */
+    #error-text {
+      margin-top: 16px;
+      font-size: 14px;
+      color: #c00;
+    }
+
+    /* Download progress overlay */
+    #zip-progress {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: #111;
+      color: #fff;
+      padding: 14px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      z-index: 100;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Maps Photo Scraper</h1>
+      <p class="subtitle">Paste any Google Maps link to scrape all photos from the listing.</p>
+    </header>
+
+    <form id="scrape-form">
+      <div class="input-row">
+        <input type="url" id="url-input" placeholder="https://maps.app.goo.gl/..." required>
+        <button type="submit" id="submit-btn" class="btn">Scrape</button>
+      </div>
+    </form>
+
+    <div id="error-text" class="hidden"></div>
+
+    <div id="progress-section" class="hidden">
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progress-fill"></div>
+      </div>
+      <p id="progress-text">Starting...</p>
+    </div>
+
+    <div id="results-section" class="hidden">
+      <div class="results-header">
+        <div class="results-left">
+          <span id="photo-count"></span>
+          <label id="select-all-label">
+            <input type="checkbox" id="select-all-cb">
+            Select all
+          </label>
+        </div>
+        <div class="header-actions">
+          <button id="download-selected-btn" class="btn-outline hidden">Download Selected</button>
+          <button id="download-all-btn" class="btn-outline">Download All</button>
+          <button id="refresh-btn" class="btn-outline">New Scrape</button>
+        </div>
+      </div>
+      <div id="image-grid" class="image-grid"></div>
+    </div>
+  </div>
+
+  <div id="zip-progress" class="hidden"></div>
+
+  <script>
+    const form = document.getElementById('scrape-form');
+    const urlInput = document.getElementById('url-input');
+    const submitBtn = document.getElementById('submit-btn');
+    const errorText = document.getElementById('error-text');
+    const progressSection = document.getElementById('progress-section');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+    const resultsSection = document.getElementById('results-section');
+    const photoCount = document.getElementById('photo-count');
+    const downloadAllBtn = document.getElementById('download-all-btn');
+    const downloadSelectedBtn = document.getElementById('download-selected-btn');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const imageGrid = document.getElementById('image-grid');
+    const selectAllCb = document.getElementById('select-all-cb');
+    const zipProgress = document.getElementById('zip-progress');
+
+    let currentJobId = null;
+    let totalImages = 0;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const url = urlInput.value.trim();
+      if (!url) return;
+
+      // Reset
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Scraping...';
+      errorText.classList.add('hidden');
+      progressSection.classList.remove('hidden');
+      resultsSection.classList.add('hidden');
+      imageGrid.innerHTML = '';
+      progressFill.style.width = '0%';
+      progressText.textContent = 'Starting...';
+      selectAllCb.checked = false;
+      downloadSelectedBtn.classList.add('hidden');
+      totalImages = 0;
+
+      try {
+        const res = await fetch('/api/scrape', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url }),
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          showError(data.error);
+          return;
+        }
+
+        currentJobId = data.jobId;
+        listenToProgress(data.jobId);
+
+      } catch (err) {
+        showError(err.message);
+      }
+    });
+
+    function listenToProgress(jobId) {
+      const evtSource = new EventSource('/api/scrape/' + jobId + '/progress');
+
+      evtSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        switch (data.stage) {
+          case 'resolving':
+          case 'launching':
+            progressText.textContent = data.message;
+            progressFill.style.width = '5%';
+            break;
+
+          case 'navigating':
+            progressText.textContent = data.message;
+            progressFill.style.width = '15%';
+            break;
+
+          case 'gallery':
+            progressText.textContent = data.message;
+            progressFill.style.width = '20%';
+            break;
+
+          case 'scrolling':
+            progressText.textContent = data.message;
+            const scrollPct = 20 + (data.scroll / data.totalScrolls) * 25;
+            progressFill.style.width = scrollPct + '%';
+            break;
+
+          case 'clicking':
+            progressText.textContent = data.message;
+            progressFill.style.width = '48%';
+            break;
+
+          case 'navigating_photos':
+            progressText.textContent = data.message;
+            progressFill.style.width = '52%';
+            break;
+
+          case 'scrape_complete':
+            progressText.textContent = data.message;
+            progressFill.style.width = '70%';
+            break;
+
+          case 'complete':
+            progressText.textContent = data.message;
+            progressFill.style.width = '100%';
+            resultsSection.classList.remove('hidden');
+            totalImages = data.total;
+            photoCount.textContent = totalImages + ' photos';
+            // Add all image cards
+            data.images.forEach(img => addImageCard(jobId, img.index, img.filename));
+            evtSource.close();
+            resetButton();
+            break;
+
+          case 'error':
+            showError(data.message);
+            evtSource.close();
+            resetButton();
+            break;
+        }
+      };
+
+      evtSource.onerror = () => {
+        evtSource.close();
+        resetButton();
+      };
+    }
+
+    function addImageCard(jobId, index, filename) {
+      resultsSection.classList.remove('hidden');
+
+      const card = document.createElement('div');
+      card.className = 'image-card';
+      card.dataset.index = index;
+      card.dataset.filename = filename;
+
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'select-checkbox';
+      checkbox.addEventListener('click', (e) => e.stopPropagation());
+      checkbox.addEventListener('change', () => {
+        card.classList.toggle('selected', checkbox.checked);
+        updateSelectionUI();
+      });
+
+      const img = document.createElement('img');
+      img.src = '/api/scrape/' + jobId + '/image/' + index;
+      img.alt = filename;
+      img.loading = 'lazy';
+
+      const overlay = document.createElement('div');
+      overlay.className = 'download-overlay';
+
+      const btn = document.createElement('button');
+      btn.textContent = 'Download';
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        downloadSingleFile(jobId, index, filename);
+      });
+
+      overlay.appendChild(btn);
+      card.appendChild(checkbox);
+      card.appendChild(img);
+      card.appendChild(overlay);
+
+      // Click on card toggles selection
+      card.addEventListener('click', () => {
+        checkbox.checked = !checkbox.checked;
+        card.classList.toggle('selected', checkbox.checked);
+        updateSelectionUI();
+      });
+
+      imageGrid.appendChild(card);
+    }
+
+    function updateSelectionUI() {
+      const checked = imageGrid.querySelectorAll('.select-checkbox:checked');
+      const allBoxes = imageGrid.querySelectorAll('.select-checkbox');
+      selectAllCb.checked = checked.length === allBoxes.length && allBoxes.length > 0;
+
+      if (checked.length > 0) {
+        downloadSelectedBtn.classList.remove('hidden');
+        downloadSelectedBtn.textContent = `Download Selected (${checked.length})`;
+      } else {
+        downloadSelectedBtn.classList.add('hidden');
+      }
+    }
+
+    selectAllCb.addEventListener('change', () => {
+      const boxes = imageGrid.querySelectorAll('.select-checkbox');
+      boxes.forEach(cb => {
+        cb.checked = selectAllCb.checked;
+        cb.closest('.image-card').classList.toggle('selected', selectAllCb.checked);
+      });
+      updateSelectionUI();
+    });
+
+    function downloadSingleFile(jobId, index, filename) {
+      const a = document.createElement('a');
+      a.href = '/api/scrape/' + jobId + '/download/' + index;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+
+    async function downloadAsZip(indices) {
+      if (!currentJobId || indices.length === 0) return;
+
+      downloadAllBtn.disabled = true;
+      downloadSelectedBtn.disabled = true;
+      zipProgress.classList.remove('hidden');
+      zipProgress.textContent = `Preparing zip: 0 / ${indices.length}`;
+
+      const zip = new JSZip();
+      let done = 0;
+
+      // Fetch images in batches of 4 to avoid overwhelming the server
+      const batchSize = 4;
+      for (let i = 0; i < indices.length; i += batchSize) {
+        const batch = indices.slice(i, i + batchSize);
+        const promises = batch.map(async ({ index, filename }) => {
+          const res = await fetch('/api/scrape/' + currentJobId + '/image/' + index);
+          const blob = await res.blob();
+          zip.file(filename, blob);
+          done++;
+          zipProgress.textContent = `Preparing zip: ${done} / ${indices.length}`;
+        });
+        await Promise.all(promises);
+      }
+
+      zipProgress.textContent = 'Generating zip file...';
+      const content = await zip.generateAsync({ type: 'blob' });
+
+      // Trigger download
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'photos.zip';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      zipProgress.classList.add('hidden');
+      downloadAllBtn.disabled = false;
+      downloadSelectedBtn.disabled = false;
+    }
+
+    downloadAllBtn.addEventListener('click', () => {
+      const cards = imageGrid.querySelectorAll('.image-card');
+      const indices = Array.from(cards).map(c => ({
+        index: parseInt(c.dataset.index),
+        filename: c.dataset.filename,
+      }));
+      downloadAsZip(indices);
+    });
+
+    downloadSelectedBtn.addEventListener('click', () => {
+      const checked = imageGrid.querySelectorAll('.image-card.selected');
+      const indices = Array.from(checked).map(c => ({
+        index: parseInt(c.dataset.index),
+        filename: c.dataset.filename,
+      }));
+      downloadAsZip(indices);
+    });
+
+    // Refresh / New Scrape
+    refreshBtn.addEventListener('click', () => {
+      currentJobId = null;
+      totalImages = 0;
+      urlInput.value = '';
+      imageGrid.innerHTML = '';
+      resultsSection.classList.add('hidden');
+      progressSection.classList.add('hidden');
+      progressFill.style.width = '0%';
+      progressText.textContent = 'Starting...';
+      errorText.classList.add('hidden');
+      selectAllCb.checked = false;
+      downloadSelectedBtn.classList.add('hidden');
+      urlInput.focus();
+    });
+
+    function showError(msg) {
+      errorText.textContent = msg;
+      errorText.classList.remove('hidden');
+      resetButton();
+    }
+
+    function resetButton() {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Scrape';
+    }
+  </script>
+</body>
+</html>

@@ -9,6 +9,14 @@
     "directory": "public"
   },
 
+  // Custom domain
+  "routes": [
+    {
+      "pattern": "getfrommap.unochai.com",
+      "custom_domain": true
+    }
+  ],
+
   // Browser Rendering binding
   "browser": {
     "binding": "MYBROWSER"
